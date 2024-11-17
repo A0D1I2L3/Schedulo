@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
-import { setDoc, doc } from "firebase/firestore";
-import { db } from "./firebase";
+import { setDoc, doc, getDoc } from "firebase/firestore";
+import { db, auth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 import { HomeComponent } from "./home";
-
 const generateUniqueID = () => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
@@ -29,6 +30,34 @@ export const HostPage = () => {
   const [eventName, setEventName] = useState("");
   const [eventDescription, setEventDescription] = useState("");
   const [showHome, setShowHome] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [name, setName] = useState("");
+
+  const navigate = useNavigate();
+  useEffect(() => {
+    const checkAuthAndFetchUserName = () => {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          navigate("/");
+          return;
+        }
+
+        setIsAuthenticated(true);
+
+        const userDocRef = doc(db, "users", user.uid);
+        try {
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+            setName(docSnap.data().name);
+          }
+        } catch (error) {
+          console.error("Error fetching user name:", error);
+        }
+      });
+    };
+
+    checkAuthAndFetchUserName();
+  }, [navigate]);
 
   const handleInputChange = (e) => setInputValue(e.target.value);
 
@@ -47,9 +76,9 @@ export const HostPage = () => {
   const handleNextQuestion = () => {
     if (inputValue.trim() !== "" || currentQuestion === 0) {
       if (currentQuestion === 0) {
-        setEventName(inputValue);
+        setEventName(inputValue); // Set event name
       } else if (currentQuestion === 1) {
-        setEventDescription(inputValue);
+        setEventDescription(inputValue); // Set event description
       }
 
       setInputValue("");

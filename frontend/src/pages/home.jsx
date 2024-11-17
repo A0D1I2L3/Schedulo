@@ -1,51 +1,16 @@
-import { useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
-import { setDoc, doc, getDoc } from "firebase/firestore";
-import { db, auth } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import React, { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "./firebase";
 import { useNavigate } from "react-router-dom";
-import { HomeComponent } from "./home";
 
-const generateUniqueID = () => {
-  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let result = "";
-  for (let i = 0; i < 4; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return `${result}`;
-};
-
-const EVENTID = generateUniqueID() + "-" + generateUniqueID();
-
-export const HostPage = () => {
-  const questions = [
-    "What's your event called?",
-    "Provide a brief description of your event",
-    "Set up your registration form",
-    "Here is your event code, please share it with all your participants!",
-  ];
-
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [inputValue, setInputValue] = useState("");
-  const [elements, setElements] = useState([]);
-  const [eventName, setEventName] = useState("");
-  const [eventDescription, setEventDescription] = useState("");
-  const [showHome, setShowHome] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+export const HomeComponent = () => {
   const [name, setName] = useState("");
-
   const navigate = useNavigate();
 
   useEffect(() => {
-    const checkAuthAndFetchUserName = () => {
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          navigate("/");
-          return;
-        }
-
-        setIsAuthenticated(true);
-
+    const fetchUserName = async () => {
+      const user = auth.currentUser;
+      if (user) {
         const userDocRef = doc(db, "users", user.uid);
         try {
           const docSnap = await getDoc(userDocRef);
@@ -55,293 +20,47 @@ export const HostPage = () => {
         } catch (error) {
           console.error("Error fetching user name:", error);
         }
-      });
+      }
     };
 
-    checkAuthAndFetchUserName();
-  }, [navigate]);
-
-  const handleInputChange = (e) => setInputValue(e.target.value);
-
-  const handleKeyPress = (e) => {
-    if (currentQuestion === 3) {
-      setShowHome(true);
-    } else if (e.key === "Enter" && inputValue.trim() !== "") {
-      handleNextQuestion();
-    } else if (e.key === "ArrowRight") {
-      handleNextQuestion();
-    } else if (e.key === "ArrowLeft") {
-      handlePreviousQuestion();
-    }
-  };
-
-  const handleNextQuestion = () => {
-    if (inputValue.trim() !== "" || currentQuestion === 0) {
-      if (currentQuestion === 0) {
-        setEventName(inputValue);
-      } else if (currentQuestion === 1) {
-        setEventDescription(inputValue);
-      }
-
-      setInputValue("");
-      if (currentQuestion < questions.length - 1) {
-        setCurrentQuestion(currentQuestion + 1);
-      }
-    }
-  };
-
-  const handlePreviousQuestion = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion(currentQuestion - 1);
-      setInputValue("");
-    }
-  };
-
-  const handleArrowClick = () => {
-    setShowHome(true);
-  };
-
-  if (showHome) {
-    return <HomeComponent />;
-  }
+    fetchUserName();
+  }, []);
 
   return (
-    <div className="flex flex-row w-full justify-center items-center h-screen text-left bg-black text-white px-6 md:px-20">
-      {currentQuestion !== 2 ? (
-        <div className="w-6/12 flex flex-col">
-          <h1 className="text-3xl md:text-4xl mb-4">
-            {currentQuestion !== 3
-              ? "Let's set up your Event."
-              : "Generating your Unique ID"}
-          </h1>
+    <div className="flex items-center justify-center h-screen bg-black text-white">
+      <div className="text-left">
+        <h1 className="text-[6vh] font-serif">Welcome, {name || "Guest"}!</h1>
+        <p className="text-lg mb-2 font-sans">What would you like to do?</p>
 
-          <h2 className="text-sm md:text-base font-sans italic opacity-75 mb-6">
-            {questions[currentQuestion]}
-          </h2>
-
-          {currentQuestion !== 3 && (
-            <input
-              type="text"
-              className="p-2 rounded-md w-full text-black bg-gray-100 gradient"
-              placeholder={
-                currentQuestion === 0
-                  ? "Enter event name"
-                  : "Enter event description"
-              }
-              value={inputValue}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyPress}
-            />
-          )}
-
-          {currentQuestion === 3 && (
-            <div>
-              <div className="gradient">{EVENTID}</div>
-
-              <div className="mt-6 absolute bottom-6 right-6 flex space-x-4">
-                <button
-                  className="bg-black text-white py-2 px-4 rounded-full flex items-center justify-center"
-                  onClick={handleArrowClick}>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-14 w-16"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M5 12h14m-7-7l7 7-7 7"
-                    />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <RegistrationForm
-          setElements={setElements}
-          elements={elements}
-          setCurrentQuestion={setCurrentQuestion}
-          eventName={eventName}
-          eventDescription={eventDescription}
-        />
-      )}
-    </div>
-  );
-};
-
-const RegistrationForm = ({
-  setElements,
-  elements,
-  setCurrentQuestion,
-  eventName,
-  eventDescription,
-}) => {
-  const [selectedElement, setSelectedElement] = useState("text");
-  const [inputValue, setInputValue] = useState("");
-  const [editingIndex, setEditingIndex] = useState(null);
-  const [checkboxOptions, setCheckboxOptions] = useState("");
-
-  const elementOptions = [
-    { value: "text", label: "Text" },
-    { value: "checkbox", label: "Checkbox" },
-    { value: "payment", label: "Payment" },
-    { value: "other", label: "*other type*" },
-  ];
-
-  const handleSelectChange = (e) => setSelectedElement(e.target.value);
-
-  const handleAddElement = () => {
-    if (selectedElement && inputValue.trim()) {
-      let newElement = {
-        id: uuidv4(),
-        type: selectedElement,
-        value: inputValue,
-      };
-
-      if (selectedElement === "checkbox" && checkboxOptions.trim()) {
-        const optionsArray = checkboxOptions.split(" ").filter(Boolean);
-        const hasDuplicates =
-          new Set(optionsArray).size !== optionsArray.length;
-        if (hasDuplicates) {
-          alert("Please enter unique checkbox options.");
-          return;
-        }
-        newElement.options = optionsArray;
-      }
-
-      if (editingIndex !== null) {
-        const updatedElements = [...elements];
-        updatedElements[editingIndex] = newElement;
-        setElements(updatedElements);
-        setEditingIndex(null);
-      } else {
-        setElements([...elements, newElement]);
-      }
-
-      setSelectedElement("text");
-      setInputValue("");
-      setCheckboxOptions("");
-    }
-  };
-
-  const handleEditElement = (index) => {
-    const element = elements[index];
-    setSelectedElement(element.type);
-    setInputValue(element.value);
-    setCheckboxOptions(element.options ? element.options.join(" ") : "");
-    setEditingIndex(index);
-  };
-
-  const handleCreateEvent = async () => {
-    try {
-      if (!eventName || !eventDescription) {
-        console.error("Event name or description is missing!");
-        return;
-      }
-
-      const eventRef = doc(db, "events", EVENTID);
-
-      await setDoc(eventRef, {
-        id: EVENTID,
-        name: eventName,
-        description: eventDescription,
-        elements: elements,
-        participants: [],
-      });
-
-      const participants = [
-        {
-          email: "",
-          joinedAt: new Date().toISOString(),
-          name: "",
-        },
-      ];
-
-      await setDoc(doc(eventRef, "participants", "templateParticipant"), {
-        participants: participants,
-      });
-
-      setCurrentQuestion(3);
-    } catch (error) {
-      console.error("Error creating event:", error);
-    }
-  };
-
-  const getElementClass = (type) => {
-    switch (type) {
-      case "text":
-        return "bg-blue-600";
-      case "checkbox":
-        return "bg-green-600";
-      case "payment":
-        return "bg-yellow-500";
-      default:
-        return "bg-pink-600";
-    }
-  };
-
-  return (
-    <div className="flex flex-col w-6/12 items-start justify-center min-h-screen bg-black text-white">
-      <h1 className="text-4xl text-left mb-4">Let’s set up your Event.</h1>
-      <p className="text-lg opacity-75 font-sans">{eventName}</p>
-      <div className="space-y-6">
-        <div className="space-x-6">
-          <select
-            value={selectedElement}
-            onChange={handleSelectChange}
-            className="p-2 rounded-md">
-            {elementOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <input
-            type="text"
-            className="p-2 rounded-md text-black"
-            placeholder="Enter text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-          />
-          {selectedElement === "checkbox" && (
-            <input
-              type="text"
-              className="p-2 rounded-md text-black"
-              placeholder="Enter options (space-separated)"
-              value={checkboxOptions}
-              onChange={(e) => setCheckboxOptions(e.target.value)}
-            />
-          )}
+        <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={handleAddElement}
-            className="bg-blue-600 px-4 py-2 rounded-full mt-4">
-            Add Element
+            onClick={() => navigate("/register")}
+            className="flex flex-row text-xl justify-between gap-x-[14vh] bg-zinc-900 border-solid border-[1px] border-zinc-600 hover:bg-gray-700 items-center px-3 py-2 text-white text-md font-serif">
+            <div>Register</div>
+            <div className="text-pink-400 mr-2">•</div>
+          </button>
+
+          <button
+            onClick={() => navigate("/host")}
+            className="flex flex-row text-xl justify-between gap-x-[14vh] bg-zinc-900 border-solid border-[1px] border-zinc-600 hover:bg-gray-700 items-center px-3 py-2 text-white text-md font-serif">
+            <div>Host</div>
+            <div className="text-yellow-400 mr-2">•</div>
+          </button>
+
+          <button
+            onClick={() => navigate(`/events/Q20G-ZE55/participants`)}
+            className="flex flex-row text-xl justify-between gap-x-[14vh] bg-zinc-900 border-solid border-[1px] border-zinc-600 hover:bg-gray-700 items-center px-3 py-2 text-white text-md font-serif">
+            <div>Check</div>
+            <div className="text-purple-400 mr-2">•</div>
+          </button>
+
+          <button
+            onClick={() => navigate("/view")}
+            className="flex flex-row text-xl justify-between gap-x-[14vh] bg-zinc-900 border-solid border-[1px] border-zinc-600 hover:bg-gray-700 items-center px-3 py-2 text-white text-md font-serif">
+            <div>View</div>
+            <div className="text-orange-400 mr-2">•</div>
           </button>
         </div>
-        <div>
-          {elements.map((element, index) => (
-            <div
-              key={element.id}
-              className={`flex justify-between items-center mt-3 px-4 py-2 rounded-md ${getElementClass(
-                element.type
-              )}`}>
-              <p>{element.value}</p>
-              <button onClick={() => handleEditElement(index)}>Edit</button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <button
-          onClick={handleCreateEvent}
-          className="px-6 py-2 bg-red-500 rounded-md">
-          Create Event
-        </button>
       </div>
     </div>
   );
