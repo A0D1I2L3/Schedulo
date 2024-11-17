@@ -84,7 +84,9 @@ const ViewPage = () => {
         setEvents([]);
         setHasMore(false);
       } else {
-        const fetchedEvents = snapshot.docs.map((doc) => formatEvent(doc));
+        const fetchedEvents = snapshot.docs.map((doc) =>
+          formatEvent(doc, currentUser.email)
+        );
         setEvents(fetchedEvents);
         setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
         setHasMore(snapshot.docs.length === eventsPerPage);
@@ -116,7 +118,9 @@ const ViewPage = () => {
       if (snapshot.empty) {
         setHasMore(false);
       } else {
-        const fetchedEvents = snapshot.docs.map((doc) => formatEvent(doc));
+        const fetchedEvents = snapshot.docs.map((doc) =>
+          formatEvent(doc, user.email)
+        );
         setEvents((prevEvents) => [...prevEvents, ...fetchedEvents]);
         setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
       }
@@ -127,21 +131,31 @@ const ViewPage = () => {
     }
   };
 
-  const formatEvent = (doc) => {
+  const formatEvent = (doc, userEmail) => {
     const data = doc.data();
+    const isHost = data.hostEmail === userEmail;
+
+    let eventStatus = data.status || "Going";
+    if (isHost) {
+      eventStatus = `Host`;
+    }
+
     return {
       name: data.name,
-      status: data.status || "Going",
-      color: getEventColor(data.status || "Going"),
+      status: eventStatus,
+      color: getEventColor(eventStatus, isHost),
     };
   };
 
-  const getEventColor = (status) => {
+  const getEventColor = (status, isHost) => {
     const colors = {
       Going: "bg-green-500",
       Cancelled: "bg-red-500",
       Postponed: "bg-yellow-500",
     };
+
+    if (isHost) return "bg-purple-500";
+
     return colors[status] || "bg-gray-500";
   };
 
@@ -176,17 +190,12 @@ const ViewPage = () => {
                 key={index}
                 className="flex justify-between items-center border border-gray-300 rounded-2xl p-4 mb-4 font-sans">
                 <span className="text-sm font-serif">{event.name}</span>
-                <div
-                  className="flex items-center ml-auto relative"
-                  onMouseEnter={() => setHoverIndex(index)}
-                  onMouseLeave={() => setHoverIndex(null)}>
-                  {hoverIndex === index && (
-                    <span className="mr-2 text-sm text-center absolute left-0 text-white">
-                      {event.status}
-                    </span>
-                  )}
+                <div className="flex items-center ml-auto">
+                  <span className="mr-2 text-sm text-center text-white">
+                    {event.status}
+                  </span>
                   <span
-                    className={`btn w-3 h-3 rounded-full ${event.color}`}></span>
+                    className={`btn w-3 h-3 rounded-full ml-2 ${event.color}`}></span>{" "}
                 </div>
               </div>
             ))}

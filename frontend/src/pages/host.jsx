@@ -243,7 +243,6 @@ const RegistrationForm = ({
 
       const eventRef = doc(db, "events", EVENTID);
 
-      // Retrieve the host's email from the auth object
       const hostEmail = auth.currentUser?.email;
 
       if (!hostEmail) {
@@ -251,14 +250,14 @@ const RegistrationForm = ({
         return;
       }
 
-      // Create event data with participantEmails array including the host's email
       await setDoc(eventRef, {
         id: EVENTID,
         name: eventName,
         description: eventDescription,
         elements: elements,
-        participants: [], // You can add participants later
-        participantEmails: [hostEmail], // Add the host's email here
+        participants: [],
+        participantEmails: [hostEmail],
+        hostEmail: hostEmail,
       });
 
       setCurrentQuestion(3);
