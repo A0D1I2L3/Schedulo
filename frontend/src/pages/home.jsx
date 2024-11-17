@@ -2,15 +2,23 @@ import React, { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { useNavigate } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
 
 export const HomeComponent = () => {
   const [name, setName] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUserName = async () => {
-      const user = auth.currentUser;
-      if (user) {
+    const checkAuthAndFetchUserName = () => {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          navigate("/");
+          return;
+        }
+
+        setIsAuthenticated(true);
+
         const userDocRef = doc(db, "users", user.uid);
         try {
           const docSnap = await getDoc(userDocRef);
@@ -20,11 +28,15 @@ export const HomeComponent = () => {
         } catch (error) {
           console.error("Error fetching user name:", error);
         }
-      }
+      });
     };
 
-    fetchUserName();
-  }, []);
+    checkAuthAndFetchUserName();
+  }, [navigate]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="flex items-center justify-center h-screen bg-black text-white">
