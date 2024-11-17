@@ -1,11 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { setDoc, doc } from "firebase/firestore";
-import { db, auth } from "./firebase";
-import { useNavigate } from "react-router-dom";
+import { db } from "./firebase";
 import { HomeComponent } from "./home";
-import { getDoc } from "firebase/firestore";
-import { onAuthStateChanged } from "firebase/auth";
 
 const generateUniqueID = () => {
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -19,21 +16,19 @@ const generateUniqueID = () => {
 const EVENTID = generateUniqueID() + "-" + generateUniqueID();
 
 export const HostPage = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [name, setName] = useState("");
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [inputValue, setInputValue] = useState("");
-  const [eventName, setEventName] = useState("");
-  const [eventDescription, setEventDescription] = useState("");
-  const [showHome, setShowHome] = useState(false);
-  const navigate = useNavigate();
-
   const questions = [
     "What's your event called?",
     "Provide a brief description of your event",
     "Set up your registration form",
     "Here is your event code, please share it with all your participants!",
   ];
+
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [inputValue, setInputValue] = useState("");
+  const [elements, setElements] = useState([]);
+  const [eventName, setEventName] = useState("");
+  const [eventDescription, setEventDescription] = useState("");
+  const [showHome, setShowHome] = useState(false);
 
   const handleInputChange = (e) => setInputValue(e.target.value);
 
@@ -42,6 +37,10 @@ export const HostPage = () => {
       setShowHome(true);
     } else if (e.key === "Enter" && inputValue.trim() !== "") {
       handleNextQuestion();
+    } else if (e.key === "ArrowRight") {
+      handleNextQuestion();
+    } else if (e.key === "ArrowLeft") {
+      handlePreviousQuestion();
     }
   };
 
@@ -60,38 +59,16 @@ export const HostPage = () => {
     }
   };
 
+  const handlePreviousQuestion = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
+      setInputValue("");
+    }
+  };
+
   const handleArrowClick = () => {
     setShowHome(true);
   };
-
-  useEffect(() => {
-    const checkAuthAndFetchUserName = () => {
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-          navigate("/");
-          return;
-        }
-
-        setIsAuthenticated(true);
-
-        const userDocRef = doc(db, "users", user.uid);
-        try {
-          const docSnap = await getDoc(userDocRef);
-          if (docSnap.exists()) {
-            setName(docSnap.data().name);
-          }
-        } catch (error) {
-          console.error("Error fetching user name:", error);
-        }
-      });
-    };
-
-    checkAuthAndFetchUserName();
-  }, [navigate]);
-
-  if (!isAuthenticated) {
-    return null;
-  }
 
   if (showHome) {
     return <HomeComponent />;
@@ -154,6 +131,8 @@ export const HostPage = () => {
         </div>
       ) : (
         <RegistrationForm
+          setElements={setElements}
+          elements={elements}
           setCurrentQuestion={setCurrentQuestion}
           eventName={eventName}
           eventDescription={eventDescription}
