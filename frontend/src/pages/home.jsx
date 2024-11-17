@@ -41,7 +41,7 @@ export const HomeComponent = () => {
   return (
     <div className="flex items-center justify-center h-screen bg-black text-white">
       <div className="text-left">
-        <h1 className="text-[6vh] font-serif">Welcome, {name || "Guest"}!</h1>
+        <h1 className="text-[6vh] font-serif">Welcome, {name || ""}!</h1>
         <p className="text-lg mb-2 font-sans">What would you like to do?</p>
 
         <div className="grid grid-cols-2 gap-4">

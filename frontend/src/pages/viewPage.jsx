@@ -8,7 +8,10 @@ import {
   orderBy,
   limit,
   startAfter,
+  doc,
+  getDoc,
 } from "firebase/firestore";
+import { useNavigate } from "react-router-dom";
 import "./Btn.css";
 
 const ViewPage = () => {
@@ -19,14 +22,41 @@ const ViewPage = () => {
   const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [hoverIndex, setHoverIndex] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [name, setName] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setUser(user);
-      if (user) fetchInitialEvents(user);
-    });
-    return () => unsubscribe();
-  }, []);
+    const checkAuthAndFetchUserName = () => {
+      auth.onAuthStateChanged(async (user) => {
+        if (!user) {
+          navigate("/");
+          return;
+        }
+
+        setIsAuthenticated(true);
+        setUser(user);
+
+        const userDocRef = doc(db, "users", user.uid);
+        try {
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+            setName(docSnap.data().name);
+          }
+        } catch (error) {
+          console.error("Error fetching user name:", error);
+        }
+      });
+    };
+
+    checkAuthAndFetchUserName();
+  }, [navigate]);
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchInitialEvents(user);
+    }
+  }, [isAuthenticated, user]);
 
   const fetchInitialEvents = async (currentUser) => {
     if (!currentUser) {
@@ -114,6 +144,10 @@ const ViewPage = () => {
     };
     return colors[status] || "bg-gray-500";
   };
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen w-full bg-black text-white flex justify-center items-center">

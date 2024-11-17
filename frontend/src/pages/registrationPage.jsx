@@ -12,6 +12,8 @@ import {
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
 import { useNavigate } from "react-router-dom";
+import { onAuthStateChanged } from "firebase/auth";
+
 
 export const RegisterPage = () => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -22,6 +24,7 @@ export const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
 
   const steps = [
@@ -30,24 +33,34 @@ export const RegisterPage = () => {
   ];
 
   useEffect(() => {
-    fetchUserName();
-  }, []);
-
-  const fetchUserName = async () => {
-    const user = auth.currentUser;
-    if (user) {
-      const userDocRef = doc(db, "users", user.uid);
-      try {
-        const docSnap = await getDoc(userDocRef);
-        if (docSnap.exists()) {
-          setName(docSnap.data().name);
-          setEmail(user.email);
+    const checkAuthAndFetchUserName = () => {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+          navigate("/");
+          return;
         }
-      } catch (error) {
-        console.error("Error fetching user name:", error);
-      }
-    }
-  };
+
+        setIsAuthenticated(true);
+
+        const userDocRef = doc(db, "users", user.uid);
+        try {
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+            setName(docSnap.data().name);
+            setEmail(user.email);
+          }
+        } catch (error) {
+          console.error("Error fetching user name:", error);
+        }
+      });
+    };
+
+    checkAuthAndFetchUserName();
+  }, [navigate]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleInputChange = (e) => setInputValue(e.target.value);
 
