@@ -164,15 +164,16 @@ export const HostPage = () => {
 };
 
 const RegistrationForm = ({
+  setElements,
+  elements,
   setCurrentQuestion,
   eventName,
   eventDescription,
 }) => {
-  const [elements, setElements] = useState([]);
   const [selectedElement, setSelectedElement] = useState("text");
   const [inputValue, setInputValue] = useState("");
-  const [checkboxOptions, setCheckboxOptions] = useState("");
   const [editingIndex, setEditingIndex] = useState(null);
+  const [checkboxOptions, setCheckboxOptions] = useState("");
 
   const elementOptions = [
     { value: "text", label: "Text" },
@@ -234,20 +235,24 @@ const RegistrationForm = ({
 
       const eventRef = doc(db, "events", EVENTID);
 
-      const hostEmail = auth.currentUser?.email;
-
-      if (!hostEmail) {
-        console.error("Host email is not available!");
-        return;
-      }
-
       await setDoc(eventRef, {
         id: EVENTID,
         name: eventName,
         description: eventDescription,
         elements: elements,
         participants: [],
-        participantEmails: [hostEmail],
+      });
+
+      const participants = [
+        {
+          email: "",
+          joinedAt: new Date().toISOString(),
+          name: "",
+        },
+      ];
+
+      await setDoc(doc(eventRef, "participants", "templateParticipant"), {
+        participants: participants,
       });
 
       setCurrentQuestion(3);
@@ -270,7 +275,7 @@ const RegistrationForm = ({
   };
 
   return (
-    <div className="flex flex-col w-5/12 items-start justify-center min-h-screen bg-black text-white">
+    <div className="flex flex-col w-6/12 items-start justify-center min-h-screen bg-black text-white">
       <h1 className="text-4xl text-left mb-4">Let’s set up your Event.</h1>
       <p className="text-lg opacity-75 font-sans mb-6">
         Set up your registration form.
@@ -298,36 +303,51 @@ const RegistrationForm = ({
         <div className="flex justify-between w-full items-center ">
           <input
             type="text"
-            className="p-2 w-full rounded-md text-black"
-            placeholder="Enter form input"
+            className="gradient w-full p-2 rounded-md"
+            placeholder={`Enter ${selectedElement} prompt`}
             value={inputValue}
+            autoFocus
             onChange={(e) => setInputValue(e.target.value)}
           />
-          <div className="ml-6 flex space-x-4">
-            <select
-              value={selectedElement}
-              onChange={handleSelectChange}
-              className="p-2 rounded-md bg-gray-200 text-black">
-              {elementOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <button
-              className="bg-green-500 text-white px-4 py-2 rounded-md"
-              onClick={handleAddElement}>
-              {editingIndex !== null ? "Edit" : "Add"} Element
-            </button>
-          </div>
+
+          <select
+            className="p-2 rounded-md ml-5 text-black gradient"
+            value={selectedElement}
+            onChange={handleSelectChange}>
+            {elementOptions.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+                className="bg-gray-700 text-white ">
+                {option.label}
+              </option>
+            ))}
+          </select>
         </div>
+
+        {selectedElement === "checkbox" && (
+          <div className="mt-4 w-full">
+            <input
+              type="text"
+              className="p-2 w-full rounded-md text-black gradient "
+              placeholder="Enter checkbox options separated by spaces"
+              value={checkboxOptions}
+              onChange={(e) => setCheckboxOptions(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-6 absolute bottom-6 right-6 flex space-x-4">
         <button
-          className="bg-black text-white py-2 px-4 rounded-full flex items-center justify-center"
+          className="bg-black text-white py-2 px-4 rounded-full border-white border-2"
+          onClick={handleAddElement}>
+          Add Element
+        </button>
+        <button
+          className="bg-white text-black py-2 px-4  rounded-full"
           onClick={handleCreateEvent}>
-          Save Event
+          Create Event
         </button>
       </div>
     </div>
