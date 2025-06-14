@@ -39,7 +39,7 @@ export const WelcomePage = () => {
               Safe, secure and quick registrations.
               <br />
               <span className="opacity-50 inline-block">
-                now possible thanks to "hehe"
+                now possible thanks to Schedulo
               </span>
             </h1>
             <p className="italic mt-2 text-xs">
